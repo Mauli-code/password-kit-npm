@@ -1,0 +1,17 @@
+{
+  "name": "password-kit-js",
+  "version": "1.0.0",
+  "description": "A lightweight utility kit for generating and validating passwords.",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "keywords": [
+    "password",
+    "generator",
+    "validator",
+    "security"
+  ],
+  "author": "",
+  "license": "MIT"
+}
