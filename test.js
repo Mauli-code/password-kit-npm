@@ -254,6 +254,136 @@ assert('propagates invalid length error from generatePassword()', () => {
   }
 });
 
+// ─── Improved input validation ───────────────────────────────────────────────
+
+// generatePassword — missing / bad length types
+assert('throws TypeError for undefined length', () => {
+  try { generatePassword(undefined); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof TypeError)) throw new Error(`expected TypeError, got ${err.constructor.name}: ${err.message}`);
+  }
+});
+
+assert('throws TypeError for null length', () => {
+  try { generatePassword(null); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof TypeError)) throw new Error(`expected TypeError, got ${err.constructor.name}: ${err.message}`);
+  }
+});
+
+assert('throws TypeError for NaN length', () => {
+  try { generatePassword(NaN); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof TypeError)) throw new Error(`expected TypeError, got ${err.constructor.name}: ${err.message}`);
+  }
+});
+
+assert('throws RangeError for negative length', () => {
+  try { generatePassword(-1); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof RangeError)) throw new Error(`expected RangeError, got ${err.constructor.name}: ${err.message}`);
+  }
+});
+
+// generatePassword — invalid options type
+assert('throws TypeError when options is a string', () => {
+  try { generatePassword(12, 'uppercase'); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof TypeError)) throw new Error(`expected TypeError, got ${err.constructor.name}: ${err.message}`);
+  }
+});
+
+assert('throws TypeError when options is an array', () => {
+  try { generatePassword(12, ['uppercase']); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof TypeError)) throw new Error(`expected TypeError, got ${err.constructor.name}: ${err.message}`);
+  }
+});
+
+assert('throws TypeError when options is a number', () => {
+  try { generatePassword(12, 42); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof TypeError)) throw new Error(`expected TypeError, got ${err.constructor.name}: ${err.message}`);
+  }
+});
+
+// generatePassword — non-boolean option values
+assert('throws TypeError when options.uppercase is not a boolean', () => {
+  try { generatePassword(12, { uppercase: 'yes' }); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof TypeError)) throw new Error(`expected TypeError, got ${err.constructor.name}: ${err.message}`);
+  }
+});
+
+assert('throws TypeError when options.symbols is a number', () => {
+  try { generatePassword(12, { symbols: 1 }); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof TypeError)) throw new Error(`expected TypeError, got ${err.constructor.name}: ${err.message}`);
+  }
+});
+
+// generateMultiplePasswords — missing / bad count types
+assert('throws TypeError for undefined count', () => {
+  try { generateMultiplePasswords(undefined, 12); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof TypeError)) throw new Error(`expected TypeError, got ${err.constructor.name}: ${err.message}`);
+  }
+});
+
+assert('throws TypeError for null count', () => {
+  try { generateMultiplePasswords(null, 12); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof TypeError)) throw new Error(`expected TypeError, got ${err.constructor.name}: ${err.message}`);
+  }
+});
+
+assert('throws TypeError for NaN count', () => {
+  try { generateMultiplePasswords(NaN, 12); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof TypeError)) throw new Error(`expected TypeError, got ${err.constructor.name}: ${err.message}`);
+  }
+});
+
+assert('throws RangeError for negative count', () => {
+  try { generateMultiplePasswords(-1, 12); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof RangeError)) throw new Error(`expected RangeError, got ${err.constructor.name}: ${err.message}`);
+  }
+});
+
+// checkPasswordStrength — invalid inputs
+assert('throws TypeError for null password', () => {
+  try { checkPasswordStrength(null); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof TypeError)) throw new Error(`expected TypeError, got ${err.constructor.name}: ${err.message}`);
+  }
+});
+
+assert('throws TypeError for number password', () => {
+  try { checkPasswordStrength(12345); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof TypeError)) throw new Error(`expected TypeError, got ${err.constructor.name}: ${err.message}`);
+  }
+});
+
+assert('throws TypeError for undefined password', () => {
+  try { checkPasswordStrength(undefined); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof TypeError)) throw new Error(`expected TypeError, got ${err.constructor.name}: ${err.message}`);
+  }
+});
+
+// Valid usage still works after all new validation
+assert('valid call still works after validation additions', () => {
+  const pwd = generatePassword(16, { uppercase: true, lowercase: true, numbers: true, symbols: false });
+  if (pwd.length !== 16) throw new Error(`expected 16, got ${pwd.length}`);
+});
+
+assert('valid generateMultiplePasswords still works', () => {
+  const result = generateMultiplePasswords(3, 12, { symbols: true });
+  if (result.length !== 3) throw new Error(`expected 3, got ${result.length}`);
+});
+
 // ─── checkPasswordStrength ───────────────────────────────────────────────────
 
 assert('returns an object with strength, score, and reasons', () => {

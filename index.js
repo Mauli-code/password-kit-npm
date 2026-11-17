@@ -23,6 +23,28 @@ const DEFAULT_OPTIONS = {
 };
 
 /**
+ * Validates that a value is a plain object (not an array, null, or other type).
+ * Returns an error message string if invalid, or null if valid.
+ *
+ * @param {*} value
+ * @param {string} name - Name used in the error message.
+ * @returns {string|null}
+ */
+function validateOptions(value, name) {
+  if (value === undefined || value === null) return null; // optional — absence is fine
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    return `${name} must be a plain object`;
+  }
+  const allowed = ['uppercase', 'lowercase', 'numbers', 'symbols'];
+  for (const key of allowed) {
+    if (key in value && typeof value[key] !== 'boolean') {
+      return `options.${key} must be a boolean`;
+    }
+  }
+  return null;
+}
+
+/**
  * Generates a cryptographically secure random password.
  *
  * @param {number} length  - The desired password length (must be between 4 and 128).
@@ -35,12 +57,19 @@ const DEFAULT_OPTIONS = {
  */
 function generatePassword(length, options) {
   // --- Validate length ---
-  if (typeof length !== 'number' || !Number.isInteger(length)) {
-    throw new TypeError('length must be an integer');
+  if (length === undefined || length === null) {
+    throw new TypeError('length is required');
+  }
+  if (typeof length !== 'number' || isNaN(length) || !Number.isInteger(length)) {
+    throw new TypeError('length must be a whole number (integer)');
   }
   if (length < 4 || length > 128) {
     throw new RangeError('length must be between 4 and 128');
   }
+
+  // --- Validate options ---
+  const optionsError = validateOptions(options, 'options');
+  if (optionsError) throw new TypeError(optionsError);
 
   // --- Merge options with defaults ---
   const opts = Object.assign({}, DEFAULT_OPTIONS, options);
@@ -74,13 +103,18 @@ function generatePassword(length, options) {
  * @returns {string[]} Array of generated passwords.
  */
 function generateMultiplePasswords(count, length, options) {
-  if (typeof count !== 'number' || !Number.isInteger(count)) {
-    throw new TypeError('count must be an integer');
+  // --- Validate count ---
+  if (count === undefined || count === null) {
+    throw new TypeError('count is required');
+  }
+  if (typeof count !== 'number' || isNaN(count) || !Number.isInteger(count)) {
+    throw new TypeError('count must be a whole number (integer)');
   }
   if (count < 1 || count > 100) {
     throw new RangeError('count must be between 1 and 100');
   }
 
+  // length and options are validated inside generatePassword()
   const passwords = [];
   for (let i = 0; i < count; i++) {
     passwords.push(generatePassword(length, options));
