@@ -1,6 +1,6 @@
 'use strict';
 
-const { generatePassword } = require('./index.js');
+const { generatePassword, generateMultiplePasswords } = require('./index.js');
 
 let passed = 0;
 let failed = 0;
@@ -174,6 +174,86 @@ assert('calling without options still works (backward compatible)', () => {
   if (pwd.length !== 16) throw new Error(`expected length 16, got ${pwd.length}`);
 });
 
+// ─── generateMultiplePasswords ───────────────────────────────────────────────
+
+assert('returns an array', () => {
+  const result = generateMultiplePasswords(3, 12);
+  if (!Array.isArray(result)) throw new Error(`expected array, got ${typeof result}`);
+});
+
+assert('returns correct count (1)', () => {
+  const result = generateMultiplePasswords(1, 12);
+  if (result.length !== 1) throw new Error(`expected 1, got ${result.length}`);
+});
+
+assert('returns correct count (5)', () => {
+  const result = generateMultiplePasswords(5, 12);
+  if (result.length !== 5) throw new Error(`expected 5, got ${result.length}`);
+});
+
+assert('returns correct count (10)', () => {
+  const result = generateMultiplePasswords(10, 12);
+  if (result.length !== 10) throw new Error(`expected 10, got ${result.length}`);
+});
+
+assert('each password has the correct length', () => {
+  const result = generateMultiplePasswords(10, 20);
+  for (const pwd of result) {
+    if (pwd.length !== 20) throw new Error(`expected length 20, got ${pwd.length} in: ${pwd}`);
+  }
+});
+
+assert('each password is a string', () => {
+  const result = generateMultiplePasswords(5, 16);
+  for (const pwd of result) {
+    if (typeof pwd !== 'string') throw new Error(`expected string, got ${typeof pwd}`);
+  }
+});
+
+assert('passwords are not all identical', () => {
+  const result = generateMultiplePasswords(5, 16);
+  const unique = new Set(result);
+  if (unique.size === 1) throw new Error('all 5 passwords are identical — extremely unlikely unless broken');
+});
+
+assert('respects character options (symbols only)', () => {
+  const SYMBOLS = '!@#$%^&*()-_=+[]{}|;:,.<>?';
+  const result = generateMultiplePasswords(5, 16, { uppercase: false, lowercase: false, numbers: false, symbols: true });
+  for (const pwd of result) {
+    for (const ch of pwd) {
+      if (!SYMBOLS.includes(ch)) throw new Error(`unexpected char "${ch}" in: ${pwd}`);
+    }
+  }
+});
+
+assert('throws TypeError for non-integer count', () => {
+  try { generateMultiplePasswords(2.5, 12); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof TypeError)) throw new Error(`expected TypeError, got ${err.constructor.name}`);
+  }
+});
+
+assert('throws RangeError for count 0', () => {
+  try { generateMultiplePasswords(0, 12); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof RangeError)) throw new Error(`expected RangeError, got ${err.constructor.name}`);
+  }
+});
+
+assert('throws RangeError for count 101 (above maximum)', () => {
+  try { generateMultiplePasswords(101, 12); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof RangeError)) throw new Error(`expected RangeError, got ${err.constructor.name}`);
+  }
+});
+
+assert('propagates invalid length error from generatePassword()', () => {
+  try { generateMultiplePasswords(3, 200); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof RangeError)) throw new Error(`expected RangeError, got ${err.constructor.name}`);
+  }
+});
+
 // ─── Sample output ───────────────────────────────────────────────────────────
 
 console.log('\nSample passwords:');
@@ -181,6 +261,9 @@ console.log(`  default (16):              ${generatePassword(16)}`);
 console.log(`  symbols enabled (16):      ${generatePassword(16, { symbols: true })}`);
 console.log(`  uppercase + numbers (16):  ${generatePassword(16, { uppercase: true, lowercase: false, numbers: true })}`);
 console.log(`  lowercase only (16):       ${generatePassword(16, { uppercase: false, lowercase: true, numbers: false })}`);
+
+console.log('\nSample — generateMultiplePasswords(5, 16):');
+generateMultiplePasswords(5, 16).forEach((pwd, i) => console.log(`  ${i + 1}. ${pwd}`));
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
 

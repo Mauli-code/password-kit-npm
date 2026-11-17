@@ -65,4 +65,27 @@ function generatePassword(length, options) {
   return password;
 }
 
-module.exports = { generatePassword };
+/**
+ * Generates multiple cryptographically secure random passwords.
+ *
+ * @param {number} count   - Number of passwords to generate (must be between 1 and 100).
+ * @param {number} length  - Length of each password (must be between 4 and 128).
+ * @param {object} options - Same character type options as generatePassword() (optional).
+ * @returns {string[]} Array of generated passwords.
+ */
+function generateMultiplePasswords(count, length, options) {
+  if (typeof count !== 'number' || !Number.isInteger(count)) {
+    throw new TypeError('count must be an integer');
+  }
+  if (count < 1 || count > 100) {
+    throw new RangeError('count must be between 1 and 100');
+  }
+
+  const passwords = [];
+  for (let i = 0; i < count; i++) {
+    passwords.push(generatePassword(length, options));
+  }
+  return passwords;
+}
+
+module.exports = { generatePassword, generateMultiplePasswords };
