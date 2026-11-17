@@ -88,4 +88,88 @@ function generateMultiplePasswords(count, length, options) {
   return passwords;
 }
 
-module.exports = { generatePassword, generateMultiplePasswords };
+/**
+ * Checks the strength of a given password.
+ *
+ * Scoring (1 point each):
+ *   - Length >= 8
+ *   - Length >= 12
+ *   - Contains uppercase letters (A–Z)
+ *   - Contains lowercase letters (a–z)
+ *   - Contains numbers (0–9)
+ *   - Contains symbols
+ *
+ * Score 0–2 → Weak | 3–4 → Medium | 5–6 → Strong
+ *
+ * Note: this is a basic heuristic check, not a full security audit.
+ *
+ * @param {string} password - The password to evaluate.
+ * @returns {{ strength: string, score: number, reasons: string[] }}
+ */
+function checkPasswordStrength(password) {
+  if (typeof password !== 'string') {
+    throw new TypeError('password must be a string');
+  }
+  if (password.length === 0) {
+    throw new Error('password must not be empty');
+  }
+
+  const reasons = [];
+  let score = 0;
+
+  // --- Length checks ---
+  if (password.length >= 8) {
+    score++;
+    reasons.push('at least 8 characters');
+  } else {
+    reasons.push('too short (less than 8 characters)');
+  }
+
+  if (password.length >= 12) {
+    score++;
+    reasons.push('at least 12 characters');
+  }
+
+  // --- Character type checks ---
+  if (/[A-Z]/.test(password)) {
+    score++;
+    reasons.push('contains uppercase letters');
+  } else {
+    reasons.push('no uppercase letters');
+  }
+
+  if (/[a-z]/.test(password)) {
+    score++;
+    reasons.push('contains lowercase letters');
+  } else {
+    reasons.push('no lowercase letters');
+  }
+
+  if (/[0-9]/.test(password)) {
+    score++;
+    reasons.push('contains numbers');
+  } else {
+    reasons.push('no numbers');
+  }
+
+  if (/[^A-Za-z0-9]/.test(password)) {
+    score++;
+    reasons.push('contains symbols');
+  } else {
+    reasons.push('no symbols');
+  }
+
+  // --- Determine strength label ---
+  let strength;
+  if (score <= 2) {
+    strength = 'Weak';
+  } else if (score <= 4) {
+    strength = 'Medium';
+  } else {
+    strength = 'Strong';
+  }
+
+  return { strength, score, reasons };
+}
+
+module.exports = { generatePassword, generateMultiplePasswords, checkPasswordStrength };

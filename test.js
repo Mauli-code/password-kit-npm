@@ -1,6 +1,6 @@
 'use strict';
 
-const { generatePassword, generateMultiplePasswords } = require('./index.js');
+const { generatePassword, generateMultiplePasswords, checkPasswordStrength } = require('./index.js');
 
 let passed = 0;
 let failed = 0;
@@ -254,6 +254,105 @@ assert('propagates invalid length error from generatePassword()', () => {
   }
 });
 
+// ─── checkPasswordStrength ───────────────────────────────────────────────────
+
+assert('returns an object with strength, score, and reasons', () => {
+  const result = checkPasswordStrength('Hello1!');
+  if (typeof result !== 'object')         throw new Error('expected an object');
+  if (typeof result.strength !== 'string') throw new Error('missing strength string');
+  if (typeof result.score !== 'number')    throw new Error('missing score number');
+  if (!Array.isArray(result.reasons))      throw new Error('missing reasons array');
+});
+
+// Weak: short, only lowercase
+assert('weak — short lowercase-only password scores Weak', () => {
+  const result = checkPasswordStrength('abc');
+  if (result.strength !== 'Weak') throw new Error(`expected Weak, got ${result.strength}`);
+  if (result.score > 2)           throw new Error(`expected score <= 2, got ${result.score}`);
+});
+
+// Weak: 8+ chars but only one type
+assert('weak — 8 lowercase letters scores Weak', () => {
+  const result = checkPasswordStrength('abcdefgh');
+  if (result.strength !== 'Weak') throw new Error(`expected Weak, got ${result.strength}`);
+});
+
+// Medium: decent length, two or three types
+assert('medium — mixed case + number, short, scores Medium', () => {
+  const result = checkPasswordStrength('Hello1');
+  if (result.strength !== 'Medium') throw new Error(`expected Medium, got ${result.strength}`);
+  if (result.score < 3 || result.score > 4) throw new Error(`expected score 3–4, got ${result.score}`);
+});
+
+assert('medium — 8+ chars with uppercase, lowercase, number scores Medium', () => {
+  const result = checkPasswordStrength('Hello123');
+  if (result.strength !== 'Medium') throw new Error(`expected Medium, got ${result.strength}`);
+});
+
+// Strong: long, all character types
+assert('strong — 12+ chars with all types scores Strong', () => {
+  const result = checkPasswordStrength('Hello123!@#World');
+  if (result.strength !== 'Strong') throw new Error(`expected Strong, got ${result.strength}`);
+  if (result.score < 5)             throw new Error(`expected score >= 5, got ${result.score}`);
+});
+
+assert('strong — max score is 6', () => {
+  const result = checkPasswordStrength('Abcdef1!ghijkl');
+  if (result.score > 6) throw new Error(`score ${result.score} exceeds maximum of 6`);
+});
+
+// Score accuracy
+assert('score increases with uppercase added', () => {
+  const lower  = checkPasswordStrength('hello123');
+  const mixed  = checkPasswordStrength('Hello123');
+  if (mixed.score <= lower.score) throw new Error(`expected higher score with uppercase`);
+});
+
+assert('score increases with symbol added', () => {
+  const noSym  = checkPasswordStrength('Hello123');
+  const withSym = checkPasswordStrength('Hello123!');
+  if (withSym.score <= noSym.score) throw new Error('expected higher score with symbol');
+});
+
+// Reasons
+assert('reasons include "too short" for a short password', () => {
+  const result = checkPasswordStrength('hi');
+  if (!result.reasons.some(r => r.includes('too short'))) {
+    throw new Error(`expected "too short" reason, got: ${result.reasons.join(', ')}`);
+  }
+});
+
+assert('reasons include "contains symbols" when symbols present', () => {
+  const result = checkPasswordStrength('Hello1!');
+  if (!result.reasons.some(r => r.includes('contains symbols'))) {
+    throw new Error(`expected "contains symbols" reason, got: ${result.reasons.join(', ')}`);
+  }
+});
+
+assert('reasons include "no symbols" when symbols absent', () => {
+  const result = checkPasswordStrength('Hello123');
+  if (!result.reasons.some(r => r.includes('no symbols'))) {
+    throw new Error(`expected "no symbols" reason, got: ${result.reasons.join(', ')}`);
+  }
+});
+
+// Input validation
+assert('throws TypeError for non-string input', () => {
+  try { checkPasswordStrength(12345); throw new Error('no error thrown'); }
+  catch (err) {
+    if (!(err instanceof TypeError)) throw new Error(`expected TypeError, got ${err.constructor.name}`);
+  }
+});
+
+assert('throws Error for empty string', () => {
+  try { checkPasswordStrength(''); throw new Error('no error thrown'); }
+  catch (err) {
+    if (err.message !== 'password must not be empty') {
+      throw new Error(`unexpected error: ${err.message}`);
+    }
+  }
+});
+
 // ─── Sample output ───────────────────────────────────────────────────────────
 
 console.log('\nSample passwords:');
@@ -264,6 +363,14 @@ console.log(`  lowercase only (16):       ${generatePassword(16, { uppercase: fa
 
 console.log('\nSample — generateMultiplePasswords(5, 16):');
 generateMultiplePasswords(5, 16).forEach((pwd, i) => console.log(`  ${i + 1}. ${pwd}`));
+
+console.log('\nSample — checkPasswordStrength:');
+['abc', 'Hello123', 'Hello123!@#World'].forEach(pwd => {
+  const { strength, score, reasons } = checkPasswordStrength(pwd);
+  console.log(`  "${pwd}"`);
+  console.log(`    strength: ${strength}  score: ${score}/6`);
+  console.log(`    reasons:  ${reasons.join(' | ')}`);
+});
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
