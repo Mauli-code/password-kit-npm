@@ -36,6 +36,13 @@ function validateOptions(value, name) {
     return `${name} must be a plain object`;
   }
   const allowed = ['uppercase', 'lowercase', 'numbers', 'symbols'];
+  // Reject unknown keys
+  for (const key of Object.keys(value)) {
+    if (!allowed.includes(key)) {
+      return `unknown option "${key}" — allowed keys are: ${allowed.join(', ')}`;
+    }
+  }
+  // Ensure known keys are booleans
   for (const key of allowed) {
     if (key in value && typeof value[key] !== 'boolean') {
       return `options.${key} must be a boolean`;
@@ -63,8 +70,8 @@ function generatePassword(length, options) {
   if (typeof length !== 'number' || isNaN(length) || !Number.isInteger(length)) {
     throw new TypeError('length must be a whole number (integer)');
   }
-  if (length < 4 || length > 128) {
-    throw new RangeError('length must be between 4 and 128');
+  if (length < 8 || length > 128) {
+    throw new RangeError('length must be between 8 and 128');
   }
 
   // --- Validate options ---
@@ -74,24 +81,45 @@ function generatePassword(length, options) {
   // --- Merge options with defaults ---
   const opts = Object.assign({}, DEFAULT_OPTIONS, options);
 
-  // --- Build charset from enabled types ---
-  let charset = '';
-  if (opts.uppercase) charset += UPPERCASE;
-  if (opts.lowercase) charset += LOWERCASE;
-  if (opts.numbers)   charset += NUMBERS;
-  if (opts.symbols)   charset += SYMBOLS;
+  // --- Build per-group and combined charsets ---
+  const groups = [];
+  if (opts.uppercase) groups.push(UPPERCASE);
+  if (opts.lowercase) groups.push(LOWERCASE);
+  if (opts.numbers)   groups.push(NUMBERS);
+  if (opts.symbols)   groups.push(SYMBOLS);
 
-  if (charset.length === 0) {
+  if (groups.length === 0) {
     throw new Error('at least one character type must be enabled');
   }
 
-  // --- Generate password ---
-  let password = '';
-  for (let i = 0; i < length; i++) {
-    const index = crypto.randomInt(0, charset.length);
-    password += charset[index];
+  // length is always >= 8 and groups.length is at most 4, so this never
+  // triggers in practice — but it makes the constraint explicit.
+  if (length < groups.length) {
+    throw new RangeError(
+      `length (${length}) must be at least ${groups.length} to include one character from each enabled group`
+    );
   }
-  return password;
+
+  const charset = groups.join('');
+
+  // --- Guarantee one character from every enabled group ---
+  const chars = [];
+  for (const group of groups) {
+    chars.push(group[crypto.randomInt(0, group.length)]);
+  }
+
+  // --- Fill remaining slots from the full charset ---
+  while (chars.length < length) {
+    chars.push(charset[crypto.randomInt(0, charset.length)]);
+  }
+
+  // --- Fisher-Yates shuffle using crypto.randomInt ---
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(0, i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+
+  return chars.join('');
 }
 
 /**

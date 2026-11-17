@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "description": "A lightweight utility kit for generating and validating passwords.",
   "main": "index.js",
+  "files": [
+    "index.js",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "node --test test/*.test.js"
   },
@@ -12,6 +17,17 @@
     "validator",
     "security"
   ],
-  "author": "",
-  "license": "MIT"
+  "author": "Mauli-code",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mauli-code/password-kit-npm.git"
+  },
+  "homepage": "https://github.com/Mauli-code/password-kit-npm#readme",
+  "bugs": {
+    "url": "https://github.com/Mauli-code/password-kit-npm/issues"
+  }
 }

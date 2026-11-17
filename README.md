@@ -38,7 +38,7 @@ Generates a single cryptographically secure password.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `length` | integer | Yes | Password length — must be between `4` and `128` |
+| `length` | integer | Yes | Password length — must be between `8` and `128` |
 | `options` | object | No | Which character types to include (see below) |
 
 **Default options** — when `options` is omitted:
@@ -67,12 +67,12 @@ const strong = generatePassword(20, {
 console.log(strong); // e.g. "k@3Rp!mZ9#aB2$Lq7^Tn"
 
 // Numbers only
-const pin = generatePassword(6, {
+const pin = generatePassword(8, {
   uppercase: false,
   lowercase: false,
   numbers:   true,
 });
-console.log(pin); // e.g. "483921"
+console.log(pin); // e.g. "48392174"
 
 // Lowercase letters only
 const readable = generatePassword(12, {
@@ -94,7 +94,7 @@ Generates several passwords at once and returns them as an array.
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `count` | integer | Yes | Number of passwords — must be between `1` and `100` |
-| `length` | integer | Yes | Length of each password — must be between `4` and `128` |
+| `length` | integer | Yes | Length of each password — must be between `8` and `128` |
 | `options` | object | No | Same character type options as `generatePassword()` |
 
 ```js
@@ -217,8 +217,8 @@ generatePassword(8.5);
 // TypeError: length must be a whole number (integer)
 
 // Length out of range
-generatePassword(3);
-// RangeError: length must be between 4 and 128
+generatePassword(7);
+// RangeError: length must be between 8 and 128
 
 // Invalid options type
 generatePassword(12, 'uppercase');
@@ -227,6 +227,10 @@ generatePassword(12, 'uppercase');
 // Non-boolean option value
 generatePassword(12, { uppercase: 'yes' });
 // TypeError: options.uppercase must be a boolean
+
+// Unknown option key
+generatePassword(12, { specialMode: true });
+// TypeError: unknown option "specialMode" — allowed keys are: uppercase, lowercase, numbers, symbols
 
 // All character types disabled
 generatePassword(12, { uppercase: false, lowercase: false, numbers: false, symbols: false });
@@ -268,6 +272,7 @@ tests: 78 | pass: 78 | fail: 0
 ## Security Notes
 
 - All passwords are generated using [`crypto.randomInt()`](https://nodejs.org/api/crypto.html#cryptorandomintmin-max), which is cryptographically secure. `Math.random()` is never used.
+- Every enabled character group is guaranteed to appear at least once. One character is picked from each enabled group first, then remaining slots are filled from the full combined charset. The result is shuffled using a Fisher-Yates shuffle driven by `crypto.randomInt()`, so the mandatory characters' positions are unpredictable.
 - No passwords are logged, stored, or transmitted by this package.
 - This package has zero runtime dependencies, which minimises supply-chain risk.
 
