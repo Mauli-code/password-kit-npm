@@ -1,10 +1,5 @@
 'use strict';
 
-/**
- * password-kit-js
- * A lightweight utility kit for generating and validating passwords.
- */
-
 const crypto = require('crypto');
 
 const UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -12,9 +7,6 @@ const LOWERCASE = 'abcdefghijklmnopqrstuvwxyz';
 const NUMBERS   = '0123456789';
 const SYMBOLS   = '!@#$%^&*()-_=+[]{}|;:,.<>?';
 
-/**
- * Default character options — all types enabled.
- */
 const DEFAULT_OPTIONS = {
   uppercase: true,
   lowercase: true,
@@ -22,27 +14,18 @@ const DEFAULT_OPTIONS = {
   symbols:   false,
 };
 
-/**
- * Validates that a value is a plain object (not an array, null, or other type).
- * Returns an error message string if invalid, or null if valid.
- *
- * @param {*} value
- * @param {string} name - Name used in the error message.
- * @returns {string|null}
- */
-function validateOptions(value, name) {
-  if (value === undefined || value === null) return null; // optional — absence is fine
+// Returns an error message string if options is invalid, otherwise null.
+function validateOptions(value) {
+  if (value === undefined || value === null) return null;
   if (typeof value !== 'object' || Array.isArray(value)) {
-    return `${name} must be a plain object`;
+    return 'options must be a plain object';
   }
   const allowed = ['uppercase', 'lowercase', 'numbers', 'symbols'];
-  // Reject unknown keys
   for (const key of Object.keys(value)) {
     if (!allowed.includes(key)) {
       return `unknown option "${key}" — allowed keys are: ${allowed.join(', ')}`;
     }
   }
-  // Ensure known keys are booleans
   for (const key of allowed) {
     if (key in value && typeof value[key] !== 'boolean') {
       return `options.${key} must be a boolean`;
@@ -54,16 +37,15 @@ function validateOptions(value, name) {
 /**
  * Generates a cryptographically secure random password.
  *
- * @param {number} length  - The desired password length (must be between 4 and 128).
- * @param {object} options - Which character types to include (optional).
- * @param {boolean} [options.uppercase=true]  - Include uppercase letters (A–Z).
- * @param {boolean} [options.lowercase=true]  - Include lowercase letters (a–z).
- * @param {boolean} [options.numbers=true]    - Include digits (0–9).
- * @param {boolean} [options.symbols=false]   - Include symbols (!@#$ …).
- * @returns {string} The generated password.
+ * @param {number} length  - Password length, between 8 and 128.
+ * @param {object} [options] - Which character types to include.
+ * @param {boolean} [options.uppercase=true]  - Include A–Z.
+ * @param {boolean} [options.lowercase=true]  - Include a–z.
+ * @param {boolean} [options.numbers=true]    - Include 0–9.
+ * @param {boolean} [options.symbols=false]   - Include !@#$% …
+ * @returns {string}
  */
 function generatePassword(length, options) {
-  // --- Validate length ---
   if (length === undefined || length === null) {
     throw new TypeError('length is required');
   }
@@ -74,14 +56,11 @@ function generatePassword(length, options) {
     throw new RangeError('length must be between 8 and 128');
   }
 
-  // --- Validate options ---
-  const optionsError = validateOptions(options, 'options');
+  const optionsError = validateOptions(options);
   if (optionsError) throw new TypeError(optionsError);
 
-  // --- Merge options with defaults ---
   const opts = Object.assign({}, DEFAULT_OPTIONS, options);
 
-  // --- Build per-group and combined charsets ---
   const groups = [];
   if (opts.uppercase) groups.push(UPPERCASE);
   if (opts.lowercase) groups.push(LOWERCASE);
@@ -92,28 +71,17 @@ function generatePassword(length, options) {
     throw new Error('at least one character type must be enabled');
   }
 
-  // length is always >= 8 and groups.length is at most 4, so this never
-  // triggers in practice — but it makes the constraint explicit.
-  if (length < groups.length) {
-    throw new RangeError(
-      `length (${length}) must be at least ${groups.length} to include one character from each enabled group`
-    );
-  }
-
   const charset = groups.join('');
 
-  // --- Guarantee one character from every enabled group ---
-  const chars = [];
-  for (const group of groups) {
-    chars.push(group[crypto.randomInt(0, group.length)]);
-  }
+  // Pick one character from each enabled group to guarantee coverage.
+  const chars = groups.map(group => group[crypto.randomInt(0, group.length)]);
 
-  // --- Fill remaining slots from the full charset ---
+  // Fill remaining slots from the full charset.
   while (chars.length < length) {
     chars.push(charset[crypto.randomInt(0, charset.length)]);
   }
 
-  // --- Fisher-Yates shuffle using crypto.randomInt ---
+  // Fisher-Yates shuffle so the guaranteed characters aren't always at the front.
   for (let i = chars.length - 1; i > 0; i--) {
     const j = crypto.randomInt(0, i + 1);
     [chars[i], chars[j]] = [chars[j], chars[i]];
@@ -125,13 +93,12 @@ function generatePassword(length, options) {
 /**
  * Generates multiple cryptographically secure random passwords.
  *
- * @param {number} count   - Number of passwords to generate (must be between 1 and 100).
- * @param {number} length  - Length of each password (must be between 4 and 128).
- * @param {object} options - Same character type options as generatePassword() (optional).
- * @returns {string[]} Array of generated passwords.
+ * @param {number} count   - Number of passwords, between 1 and 100.
+ * @param {number} length  - Length of each password, between 8 and 128.
+ * @param {object} [options] - Same options as generatePassword().
+ * @returns {string[]}
  */
 function generateMultiplePasswords(count, length, options) {
-  // --- Validate count ---
   if (count === undefined || count === null) {
     throw new TypeError('count is required');
   }
@@ -142,7 +109,6 @@ function generateMultiplePasswords(count, length, options) {
     throw new RangeError('count must be between 1 and 100');
   }
 
-  // length and options are validated inside generatePassword()
   const passwords = [];
   for (let i = 0; i < count; i++) {
     passwords.push(generatePassword(length, options));
@@ -151,21 +117,16 @@ function generateMultiplePasswords(count, length, options) {
 }
 
 /**
- * Checks the strength of a given password.
+ * Checks the strength of a password string.
  *
- * Scoring (1 point each):
- *   - Length >= 8
- *   - Length >= 12
- *   - Contains uppercase letters (A–Z)
- *   - Contains lowercase letters (a–z)
- *   - Contains numbers (0–9)
- *   - Contains symbols
+ * Scoring — 1 point each:
+ *   length >= 8, length >= 12, uppercase, lowercase, numbers, symbols
  *
  * Score 0–2 → Weak | 3–4 → Medium | 5–6 → Strong
  *
- * Note: this is a basic heuristic check, not a full security audit.
+ * Note: basic heuristic only, not a security audit.
  *
- * @param {string} password - The password to evaluate.
+ * @param {string} password
  * @returns {{ strength: string, score: number, reasons: string[] }}
  */
 function checkPasswordStrength(password) {
@@ -179,7 +140,6 @@ function checkPasswordStrength(password) {
   const reasons = [];
   let score = 0;
 
-  // --- Length checks ---
   if (password.length >= 8) {
     score++;
     reasons.push('at least 8 characters');
@@ -192,7 +152,6 @@ function checkPasswordStrength(password) {
     reasons.push('at least 12 characters');
   }
 
-  // --- Character type checks ---
   if (/[A-Z]/.test(password)) {
     score++;
     reasons.push('contains uppercase letters');
@@ -221,15 +180,10 @@ function checkPasswordStrength(password) {
     reasons.push('no symbols');
   }
 
-  // --- Determine strength label ---
   let strength;
-  if (score <= 2) {
-    strength = 'Weak';
-  } else if (score <= 4) {
-    strength = 'Medium';
-  } else {
-    strength = 'Strong';
-  }
+  if (score <= 2)      strength = 'Weak';
+  else if (score <= 4) strength = 'Medium';
+  else                 strength = 'Strong';
 
   return { strength, score, reasons };
 }
