@@ -7,11 +7,15 @@ const LOWERCASE = 'abcdefghijklmnopqrstuvwxyz';
 const NUMBERS   = '0123456789';
 const SYMBOLS   = '!@#$%^&*()-_=+[]{}|;:,.<>?';
 
+// Characters that look alike and are easy to misread (zero/O, one/l/I).
+const SIMILAR = '01lOI';
+
 const DEFAULT_OPTIONS = {
-  uppercase: true,
-  lowercase: true,
-  numbers:   true,
-  symbols:   false,
+  uppercase:               true,
+  lowercase:               true,
+  numbers:                 true,
+  symbols:                 false,
+  excludeSimilarCharacters: false,
 };
 
 // Returns an error message string if options is invalid, otherwise null.
@@ -20,7 +24,7 @@ function validateOptions(value) {
   if (typeof value !== 'object' || Array.isArray(value)) {
     return 'options must be a plain object';
   }
-  const allowed = ['uppercase', 'lowercase', 'numbers', 'symbols'];
+  const allowed = ['uppercase', 'lowercase', 'numbers', 'symbols', 'excludeSimilarCharacters'];
   for (const key of Object.keys(value)) {
     if (!allowed.includes(key)) {
       return `unknown option "${key}" — allowed keys are: ${allowed.join(', ')}`;
@@ -39,10 +43,11 @@ function validateOptions(value) {
  *
  * @param {number} length  - Password length, between 8 and 128.
  * @param {object} [options] - Which character types to include.
- * @param {boolean} [options.uppercase=true]  - Include A–Z.
- * @param {boolean} [options.lowercase=true]  - Include a–z.
- * @param {boolean} [options.numbers=true]    - Include 0–9.
- * @param {boolean} [options.symbols=false]   - Include !@#$% …
+ * @param {boolean} [options.uppercase=true]               - Include A–Z.
+ * @param {boolean} [options.lowercase=true]               - Include a–z.
+ * @param {boolean} [options.numbers=true]                 - Include 0–9.
+ * @param {boolean} [options.symbols=false]                - Include !@#$% …
+ * @param {boolean} [options.excludeSimilarCharacters=false] - Remove 0, O, 1, l, I.
  * @returns {string}
  */
 function generatePassword(length, options) {
@@ -61,7 +66,8 @@ function generatePassword(length, options) {
 
   const opts = Object.assign({}, DEFAULT_OPTIONS, options);
 
-  const groups = [];
+  // Build the list of character groups based on which types are enabled.
+  let groups = [];
   if (opts.uppercase) groups.push(UPPERCASE);
   if (opts.lowercase) groups.push(LOWERCASE);
   if (opts.numbers)   groups.push(NUMBERS);
@@ -69,6 +75,22 @@ function generatePassword(length, options) {
 
   if (groups.length === 0) {
     throw new Error('at least one character type must be enabled');
+  }
+
+  // If excludeSimilarCharacters is on, strip look-alike characters from every group.
+  if (opts.excludeSimilarCharacters) {
+    groups = groups.map(group =>
+      [...group].filter(ch => !SIMILAR.includes(ch)).join('')
+    );
+
+    // Guard: if any group ends up empty after filtering, skip it rather than
+    // crashing. (With the current constants this cannot happen, but it is safer
+    // to be explicit so future changes to SIMILAR or the charsets don't break things.)
+    groups = groups.filter(group => group.length > 0);
+
+    if (groups.length === 0) {
+      throw new Error('all character groups became empty after excluding similar characters');
+    }
   }
 
   const charset = groups.join('');
@@ -316,7 +338,7 @@ function validatePassword(password, rules) {
  *   Lowercase letters  → 26
  *   Uppercase letters  → 26
  *   Digits             → 10
- *   Symbols            → size of the SYMBOLS constant (28 characters)
+ *   Symbols            → size of the SYMBOLS constant (26 characters)
  *
  * Any character that falls outside all four groups is counted once as
  * an "other" character and adds 1 to the pool size.
@@ -340,7 +362,7 @@ function calculatePasswordEntropy(password) {
   if (/[a-z]/.test(password)) pool += LOWERCASE.length; // 26
   if (/[A-Z]/.test(password)) pool += UPPERCASE.length; // 26
   if (/[0-9]/.test(password)) pool += NUMBERS.length;   // 10
-  if (/[^A-Za-z0-9]/.test(password)) pool += SYMBOLS.length; // 28
+  if (/[^A-Za-z0-9]/.test(password)) pool += SYMBOLS.length; // 26
 
   // Any character that is not in the standard symbol set but is also not
   // alphanumeric (e.g. accented letters, emoji) bumps the pool by 1 each.

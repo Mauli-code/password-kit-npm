@@ -3,8 +3,10 @@
 A lightweight utility kit for generating and validating passwords in Node.js.
 
 - Generates cryptographically secure passwords using Node.js built-in `crypto`
-- Supports uppercase, lowercase, numbers, and symbols
+- Supports uppercase, lowercase, numbers, symbols, and readable character sets
 - Checks password strength with a human-readable score and reasons
+- Validates passwords against custom policy rules
+- Estimates password entropy in bits
 - Zero external dependencies
 - CommonJS — works in any Node.js project
 
@@ -51,6 +53,7 @@ Generates a single cryptographically secure password.
 | `lowercase` | `true` | Include a–z |
 | `numbers` | `true` | Include 0–9 |
 | `symbols` | `false` | Include `!@#$%^&*()-_=+[]{}|;:,.<>?` |
+| `excludeSimilarCharacters` | `false` | Remove look-alike characters: `0`, `O`, `1`, `l`, `I` |
 
 ```js
 const { generatePassword } = require('password-kit-js');
@@ -83,6 +86,16 @@ const readable = generatePassword(12, {
   numbers:   false,
 });
 console.log(readable); // e.g. "krtxbmvnapqc"
+
+// Exclude look-alike characters for easier reading
+const clear = generatePassword(16, {
+  uppercase:               true,
+  lowercase:               true,
+  numbers:                 true,
+  symbols:                 true,
+  excludeSimilarCharacters: true,
+});
+console.log(clear); // never contains 0, O, 1, l, or I
 ```
 
 ---
@@ -203,6 +216,24 @@ console.log(checkPasswordStrength('Hello123!@#World'));
 
 ---
 
+## `excludeSimilarCharacters` Option
+
+When this option is set to `true`, the following characters are removed from the password before generation:
+
+| Character | Looks like |
+|---|---|
+| `0` (zero) | `O` (uppercase O) |
+| `O` (uppercase O) | `0` (zero) |
+| `1` (one) | `l` (lowercase L) or `I` (uppercase i) |
+| `l` (lowercase L) | `1` (one) or `I` (uppercase i) |
+| `I` (uppercase i) | `1` (one) or `l` (lowercase L) |
+
+This makes generated passwords easier to read and type correctly, especially when printed or displayed in a small font.
+
+**Important note:** removing these characters slightly reduces the pool size for each character type (uppercase loses 2, lowercase loses 1, digits lose 2, symbols lose 0). This results in marginally lower entropy compared to a password of the same length without the option. It improves readability, not security strength.
+
+---
+
 ## Input Validation
 
 All functions validate their inputs and throw descriptive errors for invalid arguments.
@@ -232,7 +263,7 @@ generatePassword(12, { uppercase: 'yes' });
 
 // Unknown option key
 generatePassword(12, { specialMode: true });
-// TypeError: unknown option "specialMode" — allowed keys are: uppercase, lowercase, numbers, symbols
+// TypeError: unknown option "specialMode" — allowed keys are: uppercase, lowercase, numbers, symbols, excludeSimilarCharacters
 
 // All character types disabled
 generatePassword(12, { uppercase: false, lowercase: false, numbers: false, symbols: false });
@@ -417,7 +448,7 @@ npm test
 Tests are written using Node.js built-in `node:test` and `node:assert` — no external libraries needed.
 
 ```
-tests: 155 | pass: 155 | fail: 0
+tests: 174 | pass: 174 | fail: 0
 ```
 
 ---
@@ -440,6 +471,13 @@ tests: 155 | pass: 155 | fail: 0
 - A `Strong` score means the password meets common complexity guidelines, not that it is uncrackable.
 
 For high-security applications, consider pairing this tool with a dedicated password analysis library.
+
+---
+
+## Links
+
+- **npm:** https://www.npmjs.com/package/password-kit-js
+- **GitHub:** https://github.com/Mauli-code/password-kit-npm
 
 ---
 
