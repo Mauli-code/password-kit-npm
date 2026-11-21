@@ -188,4 +188,118 @@ function checkPasswordStrength(password) {
   return { strength, score, reasons };
 }
 
-module.exports = { generatePassword, generateMultiplePasswords, checkPasswordStrength };
+// ─── validatePassword ────────────────────────────────────────────────────────
+
+// All rule names that validatePassword() understands.
+const ALLOWED_RULES = ['minLength', 'maxLength', 'requireUppercase', 'requireLowercase', 'requireNumber', 'requireSymbol'];
+
+// Sensible defaults applied when rules are omitted.
+const DEFAULT_RULES = {
+  minLength:        8,
+  maxLength:        128,
+  requireUppercase: false,
+  requireLowercase: false,
+  requireNumber:    false,
+  requireSymbol:    false,
+};
+
+/**
+ * Validates a rules object and throws a descriptive TypeError for any problem.
+ *
+ * @param {object} rules
+ */
+function validateRules(rules) {
+  if (rules === undefined || rules === null) return; // use defaults — that is fine
+
+  if (typeof rules !== 'object' || Array.isArray(rules)) {
+    throw new TypeError('rules must be a plain object');
+  }
+
+  for (const key of Object.keys(rules)) {
+    if (!ALLOWED_RULES.includes(key)) {
+      throw new TypeError(
+        `unknown rule "${key}" — allowed rules are: ${ALLOWED_RULES.join(', ')}`
+      );
+    }
+  }
+
+  if ('minLength' in rules) {
+    if (typeof rules.minLength !== 'number' || !Number.isInteger(rules.minLength) || rules.minLength < 1) {
+      throw new TypeError('rules.minLength must be a positive integer');
+    }
+  }
+
+  if ('maxLength' in rules) {
+    if (typeof rules.maxLength !== 'number' || !Number.isInteger(rules.maxLength) || rules.maxLength < 1) {
+      throw new TypeError('rules.maxLength must be a positive integer');
+    }
+  }
+
+  // If both are provided, minLength must not exceed maxLength.
+  const min = 'minLength' in rules ? rules.minLength : DEFAULT_RULES.minLength;
+  const max = 'maxLength' in rules ? rules.maxLength : DEFAULT_RULES.maxLength;
+  if (min > max) {
+    throw new TypeError('rules.minLength cannot be greater than rules.maxLength');
+  }
+
+  for (const key of ['requireUppercase', 'requireLowercase', 'requireNumber', 'requireSymbol']) {
+    if (key in rules && typeof rules[key] !== 'boolean') {
+      throw new TypeError(`rules.${key} must be a boolean`);
+    }
+  }
+}
+
+/**
+ * Checks whether a password satisfies the given policy rules.
+ *
+ * @param {string} password - The password to check.
+ * @param {object} [rules]  - Policy rules (see README for available options).
+ * @returns {{ valid: boolean, errors: string[] }}
+ */
+function validatePassword(password, rules) {
+  // 1. Validate password type first.
+  if (typeof password !== 'string') {
+    throw new TypeError('password must be a string');
+  }
+
+  // 2. Validate the rules object before using it.
+  validateRules(rules);
+
+  // 3. Merge caller-supplied rules over the defaults.
+  const policy = Object.assign({}, DEFAULT_RULES, rules);
+
+  const errors = [];
+
+  // Length checks.
+  if (password.length < policy.minLength) {
+    errors.push(`Password must be at least ${policy.minLength} characters`);
+  }
+
+  if (password.length > policy.maxLength) {
+    errors.push(`Password must be no more than ${policy.maxLength} characters`);
+  }
+
+  // Character-type checks — reuse the same regex patterns as checkPasswordStrength().
+  if (policy.requireUppercase && !/[A-Z]/.test(password)) {
+    errors.push('Password must contain an uppercase letter');
+  }
+
+  if (policy.requireLowercase && !/[a-z]/.test(password)) {
+    errors.push('Password must contain a lowercase letter');
+  }
+
+  if (policy.requireNumber && !/[0-9]/.test(password)) {
+    errors.push('Password must contain a number');
+  }
+
+  if (policy.requireSymbol && !/[^A-Za-z0-9]/.test(password)) {
+    errors.push('Password must contain a symbol');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+module.exports = { generatePassword, generateMultiplePasswords, checkPasswordStrength, validatePassword };

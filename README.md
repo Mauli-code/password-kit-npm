@@ -25,6 +25,7 @@ npm install password-kit-js
 | `generatePassword(length, options)` | Generate one secure password |
 | `generateMultiplePasswords(count, length, options)` | Generate several passwords at once |
 | `checkPasswordStrength(password)` | Check the strength of any password |
+| `validatePassword(password, rules)` | Check whether a password meets a policy |
 
 ---
 
@@ -251,11 +252,99 @@ checkPasswordStrength(12345);
 // Empty password
 checkPasswordStrength('');
 // Error: password must not be empty
+
+// Non-string password passed to validatePassword
+validatePassword(12345);
+// TypeError: password must be a string
+
+// Unknown rule key
+validatePassword('Hello@123', { strictMode: true });
+// TypeError: unknown rule "strictMode" — allowed rules are: minLength, maxLength, requireUppercase, requireLowercase, requireNumber, requireSymbol
+
+// Non-boolean rule value
+validatePassword('Hello@123', { requireUppercase: 'yes' });
+// TypeError: rules.requireUppercase must be a boolean
+
+// minLength greater than maxLength
+validatePassword('Hello@123', { minLength: 10, maxLength: 6 });
+// TypeError: rules.minLength cannot be greater than rules.maxLength
 ```
 
 ---
 
-## Testing
+### `validatePassword(password, rules)`
+
+Checks whether a password satisfies a set of policy rules you define. Returns a result object that tells you whether the password passed and lists every rule that failed — all at once, not one at a time.
+
+**Parameters**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `password` | string | Yes | The password to check |
+| `rules` | object | No | Policy rules (see table below) |
+
+**Available rules**
+
+| Rule | Type | Default | Description |
+|---|---|---|---|
+| `minLength` | integer ≥ 1 | `8` | Password must be at least this many characters |
+| `maxLength` | integer ≥ 1 | `128` | Password must be no more than this many characters |
+| `requireUppercase` | boolean | `false` | Password must contain at least one uppercase letter (A–Z) |
+| `requireLowercase` | boolean | `false` | Password must contain at least one lowercase letter (a–z) |
+| `requireNumber` | boolean | `false` | Password must contain at least one digit (0–9) |
+| `requireSymbol` | boolean | `false` | Password must contain at least one symbol (non-alphanumeric character) |
+
+**Return value**
+
+| Property | Type | Description |
+|---|---|---|
+| `valid` | boolean | `true` if all rules passed, `false` if any failed |
+| `errors` | string[] | List of human-readable messages for every rule that failed |
+
+```js
+const { validatePassword } = require('password-kit-js');
+
+// Valid password — all rules pass
+const result = validatePassword('Hello@123', {
+  minLength:        8,
+  requireUppercase: true,
+  requireLowercase: true,
+  requireNumber:    true,
+  requireSymbol:    true,
+});
+console.log(result);
+// { valid: true, errors: [] }
+
+// Invalid password — multiple rules fail
+const result2 = validatePassword('hello', {
+  minLength:        8,
+  requireUppercase: true,
+  requireNumber:    true,
+});
+console.log(result2);
+// {
+//   valid: false,
+//   errors: [
+//     'Password must be at least 8 characters',
+//     'Password must contain an uppercase letter',
+//     'Password must contain a number'
+//   ]
+// }
+
+// Using default rules only (minLength: 8, no character-type requirements)
+const result3 = validatePassword('short');
+console.log(result3);
+// { valid: false, errors: [ 'Password must be at least 8 characters' ] }
+
+// Checking maxLength (supply a compatible minLength when overriding maxLength)
+const result4 = validatePassword('toolongpassword', { minLength: 4, maxLength: 10 });
+console.log(result4);
+// { valid: false, errors: [ 'Password must be no more than 10 characters' ] }
+```
+
+---
+
+
 
 ```bash
 npm test
@@ -264,7 +353,7 @@ npm test
 Tests are written using Node.js built-in `node:test` and `node:assert` — no external libraries needed.
 
 ```
-tests: 78 | pass: 78 | fail: 0
+tests: 120 | pass: 120 | fail: 0
 ```
 
 ---
