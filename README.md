@@ -26,6 +26,7 @@ npm install password-kit-js
 | `generateMultiplePasswords(count, length, options)` | Generate several passwords at once |
 | `checkPasswordStrength(password)` | Check the strength of any password |
 | `validatePassword(password, rules)` | Check whether a password meets a policy |
+| `calculatePasswordEntropy(password)` | Estimate the entropy of a password in bits |
 
 ---
 
@@ -344,7 +345,70 @@ console.log(result4);
 
 ---
 
+### `calculatePasswordEntropy(password)`
 
+Estimates how hard a password would be to guess if every character had been chosen randomly. The result is expressed in **bits of entropy** — a higher number means more possible combinations and a harder-to-crack password.
+
+**Parameter**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `password` | string | Yes | The password to evaluate |
+
+**Return value**
+
+| Property | Type | Description |
+|---|---|---|
+| `entropy` | number | Estimated entropy in bits, rounded to two decimal places |
+| `level` | string | Human-readable classification (see table below) |
+
+**Entropy levels**
+
+| Entropy (bits) | Level |
+|---|---|
+| Below 40 | `Low` |
+| 40 to below 60 | `Moderate` |
+| 60 to below 80 | `High` |
+| 80 or more | `Very High` |
+
+**How the formula works**
+
+```
+entropy = passwordLength × log2(characterPoolSize)
+```
+
+The pool size is the total number of characters the password could have been drawn from, based on which types are actually present:
+
+| Characters present | Pool added |
+|---|---|
+| Lowercase letters (a–z) | +26 |
+| Uppercase letters (A–Z) | +26 |
+| Digits (0–9) | +10 |
+| Symbols (`!@#$%^&*()…`) | +26 |
+
+```js
+const { calculatePasswordEntropy } = require('password-kit-js');
+
+// Lowercase only — pool = 26, length = 5
+console.log(calculatePasswordEntropy('hello'));
+// { entropy: 23.5, level: 'Low' }
+
+// Mixed case + digits + symbols — pool = 88, length = 9
+console.log(calculatePasswordEntropy('Hello@123'));
+// { entropy: 58.43, level: 'Moderate' }
+
+// Longer password — pool = 88, length = 13
+console.log(calculatePasswordEntropy('Hello@1234abc'));
+// { entropy: 84.39, level: 'Very High' }
+```
+
+**Important limitation**
+
+This formula assumes every character was chosen randomly from the pool. Real human-created passwords tend to follow patterns (dictionary words, keyboard walks, predictable substitutions) that make them far easier to crack than the entropy number suggests. Use this result as a rough guide, not a security guarantee.
+
+---
+
+## Testing
 
 ```bash
 npm test
@@ -353,7 +417,7 @@ npm test
 Tests are written using Node.js built-in `node:test` and `node:assert` — no external libraries needed.
 
 ```
-tests: 120 | pass: 120 | fail: 0
+tests: 155 | pass: 155 | fail: 0
 ```
 
 ---

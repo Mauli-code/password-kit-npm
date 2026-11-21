@@ -302,4 +302,74 @@ function validatePassword(password, rules) {
   };
 }
 
-module.exports = { generatePassword, generateMultiplePasswords, checkPasswordStrength, validatePassword };
+// ─── calculatePasswordEntropy ─────────────────────────────────────────────────
+
+/**
+ * Estimates the entropy of a password in bits using the formula:
+ *
+ *   entropy = passwordLength × log2(characterPoolSize)
+ *
+ * The pool size is the total number of distinct characters the password
+ * could have been chosen from, estimated by which character types are
+ * actually present:
+ *
+ *   Lowercase letters  → 26
+ *   Uppercase letters  → 26
+ *   Digits             → 10
+ *   Symbols            → size of the SYMBOLS constant (28 characters)
+ *
+ * Any character that falls outside all four groups is counted once as
+ * an "other" character and adds 1 to the pool size.
+ *
+ * Note: this is a theoretical upper bound assuming every character was
+ * chosen randomly. Real human-created passwords are usually weaker.
+ *
+ * @param {string} password
+ * @returns {{ entropy: number, level: string }}
+ */
+function calculatePasswordEntropy(password) {
+  if (typeof password !== 'string') {
+    throw new TypeError('password must be a string');
+  }
+  if (password.length === 0) {
+    throw new Error('password must not be empty');
+  }
+
+  // Build the pool size from the character types that appear in the password.
+  let pool = 0;
+  if (/[a-z]/.test(password)) pool += LOWERCASE.length; // 26
+  if (/[A-Z]/.test(password)) pool += UPPERCASE.length; // 26
+  if (/[0-9]/.test(password)) pool += NUMBERS.length;   // 10
+  if (/[^A-Za-z0-9]/.test(password)) pool += SYMBOLS.length; // 28
+
+  // Any character that is not in the standard symbol set but is also not
+  // alphanumeric (e.g. accented letters, emoji) bumps the pool by 1 each.
+  for (const ch of password) {
+    const isKnown =
+      LOWERCASE.includes(ch) ||
+      UPPERCASE.includes(ch) ||
+      NUMBERS.includes(ch)   ||
+      SYMBOLS.includes(ch);
+    if (!isKnown) pool += 1;
+  }
+
+  // entropy = length × log2(pool)
+  const entropy = Math.round(password.length * Math.log2(pool) * 100) / 100;
+
+  // Classify the result.
+  let level;
+  if      (entropy < 40) level = 'Low';
+  else if (entropy < 60) level = 'Moderate';
+  else if (entropy < 80) level = 'High';
+  else                   level = 'Very High';
+
+  return { entropy, level };
+}
+
+module.exports = {
+  generatePassword,
+  generateMultiplePasswords,
+  checkPasswordStrength,
+  validatePassword,
+  calculatePasswordEntropy,
+};
